@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html>
+  <head>
+   <title>Highway5</title>
+    <script>
+      var Pi=Math.PI;
+      var key=[0,0,0,0,0]; // left, right, up, down
+
+      var carx = [], targetx = [], cary = [], phi = [], speed = [], lanespeed = [], targetspeed = []; fwd = [], carscored = [], cardebug =[];
+      var sendcarto = -1;
+      var neutralspeed = 6;
+      var fastspeed = -6;
+      var fastspeed2 = -10;
+      var hmcars = [];
+      var fastlane = -2;
+      var slowlane = 0;
+      var brakingspeed = 1;
+      var hmlanes = 4;
+      var hmllanes = 2;   
+      var ticks = 0;
+      var time = 0, score = 0;
+      var carN = 5*hmlanes;
+      polygonsOverlap = function(x, y, tx, ty)  {
+        doOverlap = true;
+        for(var j = 0; j < 4; j++)
+        {
+          a = 0;  b = 0;  c = 0;  d = 0;
+          for(var k = 0; k < 4; k++)
+          {
+            pr = (y[(j+1)%4] - y[j%4]) * (x[k] - x[j%4])  +  (x[j%4] - x[(j+1)%4]) * (y[k] - y[j%4]);
+            if(pr < a || k == 0)  a = pr;
+            if(pr > b || k == 0)  b = pr;
+          }
+          for(var k = 0; k < 4; k++)
+          {
+            pr = (y[(j+1)%4] - y[j%4]) * (tx[k] - x[j%4])  +  (x[j%4] - x[(j+1)%4]) * (ty[k] - y[j%4]);
+            if(pr < c || k == 0)  c = pr;
+            if(pr > d || k == 0)  d = pr;
+          }
+          if(b < c || a > d)
+            doOverlap = false;
+        }
+
+        for(var j = 0; j < 4; j++)
+        {
+          a = 0;  b = 0;  c = 0;  d = 0;
+          for(var k = 0; k < 4; k++)
+          {
+            pr = (ty[(j+1)%4] - ty[j%4]) * (tx[k] - tx[j%4])  +  (tx[j%4] - tx[(j+1)%4]) * (ty[k] - ty[j%4]);
+            if(pr < a || k == 0)  a = pr;
+            if(pr > b || k == 0)  b = pr;
+          }
+          for(var k = 0; k < 4; k++)
+          {
+            pr = (ty[(j+1)%4] - ty[j%4]) * (x[k] - tx[j%4])  +  (tx[j%4] - tx[(j+1)%4]) * (y[k] - ty[j%4]);
+            if(pr < c || k == 0)  c = pr;
+            if(pr > d || k == 0)  d = pr;
+          }
+          if(b < c || a > d)
+            doOverlap = false;
+        }
+
+        return doOverlap;
+      };
+      defineCar = function(i, x, y) {
+        carx[i] = x;
+        targetx[i] = x;
+        cary[i] = y;
+        phi[i] = 0;
+        speed[i] = 0;
+        lanespeed[i] = 0;
+        targetspeed[i] = speed[i];
+        fwd[i] = -1;
+        carscored[i] = false;
+        cardebug[i] = "";
+      };
+      reset = function() {
+        defineCar(0, 212, 365);
+        for(var i=1; i<=carN; i++)
+          defineCar(i, 212 + 24*((i + Math.floor(Math.random()*hmlanes) )%hmlanes), 1000);
+        score = - carN;
+      }
+      reset();
+
+      window.onload = function () {
+      };
+      carOnRight = function(i, sign) {
+        var foo = -1;
+        var dist = 55;
+        for(var j=0; j<=carN; j++)
+        {
+          if (i!=j && (Math.abs(24*sign + carx[i] - carx[j]) < 12 || Math.abs(24*sign + targetx[i] - targetx[j]) < 12)
+          && Math.abs(cary[i] - cary[j]) < dist)
+            foo = j;
+        }
+        return foo!=-1;
+      }
+      onTimer = function() {
+        var foo, bar;
+        phi[0] = 0;
+
+        for(var i=1; i<=carN; i++)
+        {        
+          if( (carx[i] < 212 && speed[i] == lanespeed[i]
+          && ( cary[i] < 55 || carx[0] >= 212 + 24 && cary[i] < 200  )
+          || Math.abs(carx[0] - carx[i]) < 12  && (cary[i] > cary[0] - 55 - 25 && cary[0] > cary[i]) && /*speed[0] >= lanespeed[i] &&*/ key[3] )
+          && Math.abs(carx[i] - targetx[i]) < 2) 
+          {
+            foo = !carOnRight(i, +1);  // foo = car on the right
+            bar = !carOnRight(i, -1);  // bar = car on the left
+            if(carx[i] > 212 && carx[i] < 212 + (hmlanes-1)*24)
+            {
+              if(foo && bar )
+              {
+                targetx[i] += 24 * sendcarto;
+                sendcarto = - sendcarto;
+              }
+              else
+              {
+                if(foo)
+                  targetx[i] += 24;
+                if(bar)
+                  targetx[i] -= 24;
+              }
+            }
+            if(carx[i] < 212 + 12)
+            {
+              if(foo)
+              {
+                targetx[i] += 24;
+                sendcarto = +1;
+              }
+              if(!foo && bar && carx[i] > 212 - hmllanes*24 && fwd[0] == i && cary[0] - cary[fwd[0]] < 55 + 25)
+              {
+                targetx[i] -= 24;
+                sendcarto = -1;
+              }
+            }
+            if(Math.abs(carx[i] - (212 + (hmlanes-1)*24)) < 12 && bar)
+            {
+              targetx[i] -= 24;
+              sendcarto = -1;
+            }
+          }
+        }
+
+        // Работа со скоростью
+        for(var i=0; i<=carN; i++)
+        {
+          lanespeed[i] = 0;
+          if(phi[i] == 0)
+            foo = carx[i];
+          else
+            foo = targetx[i];
+          if(Math.abs(foo - 212) < 12)
+            lanespeed[i] = slowlane;
+          if(Math.abs(foo - (212 + 1*24) ) < 12)
+            lanespeed[i] = slowlane;
+          if(Math.abs(foo - (212 + 2*24) ) < 12)
+            lanespeed[i] = slowlane;
+          if(Math.abs(foo - (212 + 3*24) ) < 12)
+            lanespeed[i] = slowlane;
+          if(foo < 200)
+            lanespeed[i] = slowlane;
+          if(i!=0)
+          {
+            speed[i] = lanespeed[i];
+          }
+        }
+          if(key[3])
+            targetspeed[0] = brakingspeed;
+          else
+          {
+            if(carx[0] >= 200)
+            {
+              if(targetspeed[0] > fastspeed)
+                targetspeed[0] = fastspeed;
+            }
+            else
+              targetspeed[0] = fastspeed2;
+          }
+          i = 0;
+          if(Math.abs(targetspeed[i] - speed[i]) < 1)
+          {
+            speed[i] = targetspeed[i];
+          }
+          if(targetspeed[i] < speed[i])
+          {
+            speed[i] -= 1;
+          }
+          if(targetspeed[i] > speed[i])
+          {
+            speed[i] += 2;
+          }
+
+        // define fwd[i]
+        for(var i=0; i<=carN; i++)
+        {
+            fwd[i] = -1;
+            bar = 1500;
+            for(var j=0; j<=carN; j++)
+            {
+              if (i!=j && (Math.abs(carx[j] - carx[i])<12 || Math.abs(targetx[j] - targetx[i])<12) && cary[i] - cary[j] < bar && cary[i] > cary[j])
+              {
+                fwd[i] = j;
+                bar = cary[i] - cary[j];
+              }
+            }
+        }
+
+        for(var i=0; i<=carN; i++)
+        {
+          phi[i] = 0;
+          q = 3;
+          if(i!=0 && targetx[i] < carx[i] || i==0 && key[0] && (carx[i] - 11) > 200 )
+          {
+            phi[i] = -Pi/20;
+            carx[i] -= q;
+          }
+          if(i!=0 && targetx[i] > carx[i] || i==0 && key[1] && (carx[i] + 8) < 200 + hmlanes*24)
+          {
+            phi[i] = + Pi/20;
+            carx[i] += q;
+          }
+          if(i==0) targetx[0] = carx[0];
+          if(Math.abs(targetx[i] - carx[i]) < q)
+            carx[i] = targetx[i];
+        }
+
+        for(var i = 1; i<=carN; i++)
+        {
+          cary[i] = cary[i] + speed[i] - speed[0];
+          if(cary[i] + 45 - 0 > cary[0] && !carscored[i])
+          {
+            score++;
+            carscored[i] = true;
+          }
+          foo = Math.abs(carx[i] - carx[0]) < 24 + 10 && Math.abs(cary[i] - cary[0]) < 30 + 10;
+          if(foo)
+          {
+            var px = [], py = [], tx = [], ty = [];
+            foo = Math.cos(phi[i]);
+            bar = Math.sin(phi[i])
+            px[0] = carx[i] - 8*foo +  6*bar;
+            py[0] = cary[i] - 8*bar -  6*foo; // (-7, -5)
+            px[1] = carx[i] + 8*foo +  6*bar;
+            py[1] = cary[i] + 8*bar -  6*foo; // (+7, -5)
+            px[2] = carx[i] + 8*foo - 21*bar;
+            py[2] = cary[i] + 8*bar + 21*foo; // (+7, +20)
+            px[3] = carx[i] - 8*foo - 21*bar;
+            py[3] = cary[i] - 8*bar + 21*foo; // (-7, +20)
+
+            foo = Math.cos(phi[0]);
+            bar = Math.sin(phi[0])
+            tx[0] = carx[0] - 8*foo +  6*bar;
+            ty[0] = cary[0] - 8*bar -  6*foo; // (-7, -5)
+            tx[1] = carx[0] + 8*foo +  6*bar;
+            ty[1] = cary[0] + 8*bar -  6*foo; // (+7, -5)
+            tx[2] = carx[0] + 8*foo - 21*bar;
+            ty[2] = cary[0] + 8*bar + 21*foo; // (+7, +20)
+            tx[3] = carx[0] - 8*foo - 21*bar;
+            ty[3] = cary[0] - 8*bar + 21*foo; // (-7, +20)
+            
+            foo = polygonsOverlap(px, py, tx, ty);
+
+          }
+          if(foo)
+            clearTimeout(Timer);
+        }
+
+        for(var i = 1; i<=carN; i++)
+        {
+          if(cary[i]>420)
+          {
+            hmcars[0] = 0;
+            hmcars[1] = 0;
+            hmcars[2] = 0;
+            hmcars[3] = 0;
+            for(var j=1; j<=carN; j++)
+            {       
+              if(carx[j] < 200 + 24) hmcars[0]++;
+              if(200 + 24 <= carx[j] && carx[j] < 200 + 24*2) hmcars[1]++;
+              if(200 + 24*2 < carx[j] && carx[j] <= 200 + 24*3) hmcars[2]++;
+              if(200 + 24*3 < carx[j] && carx[j] <= 200 + 24*4) hmcars[3]++;
+            }
+            var hmcarsmin = 0;
+            for(var j = 1; j < hmlanes; j++)
+              if(hmcars[j] < hmcars[hmcarsmin])
+                hmcarsmin = j;
+            defineCar(i, 212 + hmcarsmin*24, -25);
+
+            var bck = -1;
+            bar = 500;
+            for(var j=1; j<=carN; j++)
+            {
+              if (i!=j && cary[j] < bar && carx[j] > 200)
+              {
+                bck = j;
+                bar = cary[j];
+              }
+            }  
+
+            hmcarshere = 0 + 1*(Math.random() > 0.5);
+            if(bck > 0)
+            {
+              cary[i] = cary[bck] + 55;
+              do
+              {
+                cary[i] -= 55;
+                foo = 0;
+                for(var j=1; j<=carN; j++)
+                  if(i!=j && Math.abs(cary[i] - cary[j]) < 55 )
+                    foo++;
+                for(var j=1; j<=carN; j++)
+                  if(i!=j && Math.abs(carx[i] - carx[j]) < 12 && Math.abs(cary[i] - cary[j]) < 55)
+                  {
+                    carx[i] += 24;
+                    if(carx[i] > 212 + 24*(hmlanes-1) )
+                      carx[i] = 212;
+                  }
+              }
+              while(foo>hmcarshere);
+            }
+
+            targetx[i] = carx[i];
+          }
+        } 
+  
+        var canvas = document.getElementById("myCanvas");
+        var ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#223322";
+        ctx.fillRect(-1, -1, 401, 601);
+        ctx.fillStyle = "#222222";
+        ctx.fillRect(200 - hmllanes*24 - 2, -1, (hmlanes+hmllanes)*24 + 4, 602);
+        ctx.fillStyle = "#999999";
+        if(hmllanes>0)
+          ctx.fillRect(200 - hmllanes*24, -1, 1, 602);
+        ctx.fillRect(200, -1, 1, 602);
+        ctx.fillRect(200 + hmlanes*24, -1, 1, 602);
+
+        ctx.fillStyle = "#444444";
+        for(var x=200 - 24*(hmllanes-1); x<=212 + (hmlanes-1)*24; x+=24)
+        {
+          if(x!=200)
+            for(var y=-15; y<=400; y+=30)
+              ctx.fillRect(x, y + ticks, 1, 6);
+        }
+        ticks = (ticks - (speed[0]-neutralspeed))%30;
+
+        for(var i = carN; i >= 0; i--)
+        {
+         var carStyle = [];
+ 
+         switch(i%2)
+         {
+//           case 0: carStyle = ["#330000", "#660000", "#880000", "#884444", "#663333", "#442222", "#662222"]; break;
+//           case 1: carStyle = ["#002200", "#004400", "#005B00", "#445B44", "#334433", "#22D422", "#224422"]; break;
+             case 0: carStyle = ["#330000", "#660000", "#880000", "#775555", "#664444", "#442222", "#553333"]; break; // Red
+             case 1: carStyle = ["#002200", "#004400", "#005500", "#556655", "#334433", "#332233", "#334433"]; break; // Green
+         }
+         if(i==0)
+           carStyle = ["#000033", "#000066", "#000088", "#444488", "#333366", "#222244", "#222266"]; // Blue (police)
+ 
+       // carStyle = ["#330000", "#660000", "#880000", "#884444", "#663333", "#442222", "#662222"]; // Red
+       // carStyle = ["#002200", "#004400", "#005B00", "#445B44", "#334433", "#222D422", "#224422"]; // Green
+       // carStyle = ["#003333", "#006666", "#008888", "#448888", "#336666", "#224444", "#226666"]; // Cyan
+       // carStyle = ["#333300", "#666600", "#888800", "#888844", "#666633", "#444422", "#666622"]; // Yellow
+
+          foo = Math.cos(phi[i]);
+          bar = Math.sin(phi[i])
+
+          ctx.fillStyle = carStyle[0];
+          ctx.beginPath();
+          ctx.moveTo(carx[i] + 7*foo +  5*bar, cary[i] + 7*bar - 5*foo);  // (+7, -5)
+          ctx.lineTo(carx[i] + 8*foo +  5*bar, cary[i] + 8*bar - 5*foo);  // (+8, -5)
+          ctx.lineTo(carx[i] + 8*foo - 21*bar, cary[i] + 8*bar + 21*foo); // (+8, +21)
+          ctx.lineTo(carx[i] - 7*foo - 21*bar, cary[i] - 7*bar + 21*foo); // (-7, +21)
+          ctx.lineTo(carx[i] - 7*foo - 20*bar, cary[i] - 7*bar + 20*foo); // (-7, +20)
+          ctx.lineTo(carx[i] + 7*foo - 20*bar, cary[i] + 7*bar + 20*foo); // (+7, +20)
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = carStyle[1];
+          ctx.beginPath();
+          ctx.moveTo(carx[i] - 7*foo +  5*bar, cary[i] - 7*bar -  5*foo); // (-7, -5)
+          ctx.lineTo(carx[i] + 7*foo +  5*bar, cary[i] + 7*bar -  5*foo); // (+7, -5)
+          ctx.lineTo(carx[i] + 7*foo - 20*bar, cary[i] + 7*bar + 20*foo); // (+7, +20)
+          ctx.lineTo(carx[i] - 7*foo - 20*bar, cary[i] - 7*bar + 20*foo); // (-7, +20)
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = carStyle[2];
+          ctx.beginPath();
+          ctx.moveTo(carx[i] - 7*foo - 19*bar, cary[i] - 7*bar + 19*foo); // (-7, +19)
+          ctx.lineTo(carx[i] - 8*foo - 19*bar, cary[i] - 8*bar + 19*foo); // (-8, +19)
+          ctx.lineTo(carx[i] - 8*foo +  6*bar, cary[i] - 8*bar - 6*foo);  // (-8, -6)
+          ctx.lineTo(carx[i] - 7*foo +  6*bar, cary[i] - 7*bar - 6*foo);  // (-7, -6)
+          ctx.lineTo(carx[i] + 7*foo +  6*bar, cary[i] + 7*bar - 6*foo);  // (+7, -6)
+          ctx.lineTo(carx[i] + 7*foo +  7*bar, cary[i] + 7*bar - 7*foo);  // (+7, -7)
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = carStyle[3];
+          ctx.beginPath();
+          ctx.moveTo(carx[i] - 7*foo - 2*bar, cary[i] - 7*bar + 2*foo); // (-7, +2)
+          ctx.lineTo(carx[i] + 7*foo - 2*bar, cary[i] + 7*bar + 2*foo); // (+7, +2)
+          ctx.lineTo(carx[i] + 6*foo - 5*bar, cary[i] + 6*bar + 5*foo); // (+6, +5)
+          ctx.lineTo(carx[i] - 6*foo - 5*bar, cary[i] - 6*bar + 5*foo); // (-6, +5)
+          ctx.closePath();
+          ctx.fill();
+ 
+          ctx.fillStyle = carStyle[4];
+           ctx.beginPath();
+          ctx.moveTo(carx[i] - 7*foo - 5*bar, cary[i] - 7*bar + 5*foo); // (-7, +5)
+          ctx.lineTo(carx[i] - 6*foo - 5*bar, cary[i] - 6*bar + 5*foo); // (-6, +5)
+          ctx.lineTo(carx[i] - 6*foo - 12*bar, cary[i] - 6*bar + 12*foo); // (-6, +12)
+          ctx.lineTo(carx[i] - 7*foo - 12*bar, cary[i] - 7*bar + 12*foo); // (-7, +12)
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = carStyle[5];
+          ctx.beginPath();
+          ctx.moveTo(carx[i] + 6*foo - 5*bar, cary[i] + 6*bar + 5*foo);  // (+6, +5)
+          ctx.lineTo(carx[i] + 7*foo - 5*bar, cary[i] + 7*bar + 5*foo);  // (+7, +5)
+          ctx.lineTo(carx[i] + 7*foo - 12*bar , cary[i] + 7*bar + 12*foo); // (+7, +12)
+          ctx.lineTo(carx[i] + 6*foo - 12*bar, cary[i] + 6*bar + 12*foo); // (+6, +12)
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = carStyle[6];
+          ctx.beginPath();
+          ctx.moveTo(carx[i] - 6*foo - 12*bar, cary[i] - 6*bar + 12*foo); // (-6, +12)
+          ctx.lineTo(carx[i] + 6*foo - 12*bar, cary[i] + 6*bar + 12*foo); // (+6, +12)
+          ctx.lineTo(carx[i] + 7*foo - 15*bar, cary[i] + 7*bar + 15*foo); // (+7, +15)
+          ctx.lineTo(carx[i] - 7*foo - 15*bar, cary[i] - 7*bar + 15*foo); // (-7, +15)
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = "white";
+          ctx.fillText(cardebug[i], carx[i] - 10, cary[i]);
+        }
+
+        ctx.fillText("Time: " + Math.floor(time), 15, 370);
+        time += 0.1;
+       
+        ctx.fillText("Score: " + Math.floor(score), 15, 370 + 15);
+        ctx.fillText(infodebug, 20, 100);
+      };
+      var Timer = setInterval(onTimer, 100);
+      function changeKey(which, to){
+	switch (which){
+		case 65: case 37: key[0]=to; break; // left
+		case 68: case 39: key[1]=to; break; // right
+		case 32: key[3]=to; break; // space bar
+                case 113: reset(); break;  // F2
+	}
+      }
+      document.onkeydown=function(e){changeKey((e||window.event).keyCode, 1);}
+      document.onkeyup=function(e){changeKey((e||window.event).keyCode, 0);}
+    </script>
+  </head>
+<body class=example bgcolor="#000500">
+<div style="text-align: center; vertical-align: center; width: 100%; height: 100%; font-family: Arial, Helvetica, sans-serif;">
+<br/>
+<canvas id="myCanvas" width = "400" height = "400"></canvas><br/>
+<font color="#006600" size="-1">Keyboard: LEFT, RIGHT, SPACE; F2 to restart<br/>
+<a href=http://novikov.amikeco.ru>novikov.amikeco.ru</a></font>
+</div>
+</body>
+</html>
+
+
+
