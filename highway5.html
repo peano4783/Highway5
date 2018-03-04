@@ -20,6 +20,8 @@
       var ticks = 0;
       var time = 0, score = 0;
       var carN = 5*hmlanes;
+      var distance_between_cars = 80
+      var steering_step = 4;
       polygonsOverlap = function(x, y, tx, ty)  {
         doOverlap = true;
         for(var j = 0; j < 4; j++)
@@ -103,7 +105,7 @@
         {        
           if( (carx[i] < 212 && speed[i] == lanespeed[i]
           && ( cary[i] < 55 || carx[0] >= 212 + 24 && cary[i] < 200  )
-          || Math.abs(carx[0] - carx[i]) < 12  && (cary[i] > cary[0] - 55 - 25 && cary[0] > cary[i]) && /*speed[0] >= lanespeed[i] &&*/ key[3] )
+          || Math.abs(carx[0] - carx[i]) < 12  && (cary[i] > cary[0] - 55 - 25 && cary[0] > cary[i]) && key[3] )
           && Math.abs(carx[i] - targetx[i]) < 2) 
           {
             foo = !carOnRight(i, +1);  // foo = car on the right
@@ -211,19 +213,18 @@
         for(var i=0; i<=carN; i++)
         {
           phi[i] = 0;
-          q = 3;
           if(i!=0 && targetx[i] < carx[i] || i==0 && key[0] && (carx[i] - 11) > 200 )
           {
             phi[i] = -Pi/20;
-            carx[i] -= q;
+            carx[i] -= steering_step;
           }
           if(i!=0 && targetx[i] > carx[i] || i==0 && key[1] && (carx[i] + 8) < 200 + hmlanes*24)
           {
             phi[i] = + Pi/20;
-            carx[i] += q;
+            carx[i] += steering_step;
           }
           if(i==0) targetx[0] = carx[0];
-          if(Math.abs(targetx[i] - carx[i]) < q)
+          if(Math.abs(targetx[i] - carx[i]) < steering_step)
             carx[i] = targetx[i];
         }
 
@@ -303,16 +304,16 @@
             hmcarshere = 0 + 1*(Math.random() > 0.5);
             if(bck > 0)
             {
-              cary[i] = cary[bck] + 55;
+              cary[i] = cary[bck] + distance_between_cars;
               do
               {
-                cary[i] -= 55;
+                cary[i] -= distance_between_cars;
                 foo = 0;
                 for(var j=1; j<=carN; j++)
-                  if(i!=j && Math.abs(cary[i] - cary[j]) < 55 )
+                  if(i!=j && Math.abs(cary[i] - cary[j]) < distance_between_cars )
                     foo++;
                 for(var j=1; j<=carN; j++)
-                  if(i!=j && Math.abs(carx[i] - carx[j]) < 12 && Math.abs(cary[i] - cary[j]) < 55)
+                  if(i!=j && Math.abs(carx[i] - carx[j]) < 12 && Math.abs(cary[i] - cary[j]) < distance_between_cars)
                   {
                     carx[i] += 24;
                     if(carx[i] > 212 + 24*(hmlanes-1) )
@@ -464,7 +465,9 @@
 <br/>
 <canvas id="myCanvas" width = "400" height = "400"></canvas><br/>
 <font color="#006600" size="-1">Keyboard: LEFT, RIGHT, SPACE; F2 to restart<br/>
-<a href=http://novikov.amikeco.ru>novikov.amikeco.ru</a></font>
+<a href=http://novikov.amikeco.ru>novikov.amikeco.ru</a><br/>
+<a href=https://github.com/peano4783/Highway5>https://github.com/peano4783/Highway5</a>
+</font>
 </div>
 </body>
 </html>
